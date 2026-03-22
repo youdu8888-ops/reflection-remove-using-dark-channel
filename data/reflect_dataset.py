@@ -156,7 +156,7 @@ class CEILDataset(BaseDataset):
         B, R, M = self.data_synthesis(t_img, r_img)
 
         fn = os.path.basename(B_path)
-        return {'input': M, 'target_t': B, 'target_r': R, 'fn': fn}
+        return {'input': M, 'target_t': B, 'target_r': R, 'fn': fn, 'real': False, 'unaligned': False}
 
     def __len__(self):
         if self.size is not None:
@@ -195,7 +195,7 @@ class CEILTestDataset(BaseDataset):
         B = to_tensor(t_img)
         M = to_tensor(m_img)
 
-        dic =  {'input': M, 'target_t': B, 'fn': fn, 'real':True, 'target_r': B} # fake reflection gt 
+        dic =  {'input': M, 'target_t': B, 'fn': fn, 'real': True, 'unaligned': False, 'target_r': B} # fake reflection gt 
         if self.flag is not None:
             dic.update(self.flag)
         return dic
@@ -227,7 +227,7 @@ class RealDataset(BaseDataset):
         m_img = _resize_long_edge(m_img, self.max_long_edge, self.round_factor)
 
         M = to_tensor(m_img)
-        data = {'input': M, 'target_t': B, 'fn': fn}
+        data = {'input': M, 'target_t': B, 'fn': fn, 'real': True, 'unaligned': False}
         return data
 
     def __len__(self):
@@ -263,7 +263,7 @@ class PairedCEILDataset(CEILDataset):
     
         B, R, M = self.data_synthesis(t_img, r_img)
 
-        data = {'input': M, 'target_t': B, 'target_r': R, 'fn': fn}
+        data = {'input': M, 'target_t': B, 'target_r': R, 'fn': fn, 'real': False, 'unaligned': False}
         # return M, B
         return data
 

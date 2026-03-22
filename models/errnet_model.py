@@ -36,6 +36,15 @@ def tensor2im(image_tensor, imtype=np.uint8):
     return image_numpy
 
 
+def _flag_enabled(data, key, default=False):
+    value = data.get(key, default)
+    if isinstance(value, torch.Tensor):
+        return bool(value.any().item())
+    if isinstance(value, (list, tuple)):
+        return any(bool(v) for v in value)
+    return bool(value)
+
+
 class EdgeMap(nn.Module):
     def __init__(self, scale=1):
         super(EdgeMap, self).__init__()
@@ -100,8 +109,8 @@ class ERRNetBase(BaseModel):
         self.target_t = target_t
         self.data_name = data_name
 
-        self.issyn = False if 'real' in data else True
-        self.aligned = False if 'unaligned' in data else True
+        self.issyn = not _flag_enabled(data, 'real', default=False)
+        self.aligned = not _flag_enabled(data, 'unaligned', default=False)
         
         if target_t is not None:            
             self.target_edge = self.edge_map(self.target_t)         
