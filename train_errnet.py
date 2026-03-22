@@ -48,7 +48,8 @@ eval_dataset_ceilnet = datasets.CEILTestDataset(join(datadir, 'testdata_CEILNET_
 
 eval_dataset_real = datasets.CEILTestDataset(
     join(datadir, 'real20'),
-    size=20)
+    size=20,
+    max_long_edge=512)
 
 eval_dataloader_ceilnet = datasets.DataLoader(
     eval_dataset_ceilnet, batch_size=1, shuffle=False,

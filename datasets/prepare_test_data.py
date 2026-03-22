@@ -117,18 +117,18 @@ def main() -> None:
         PROCESSED_ROOT / "postcard",
     )
     solid_blended, solid_transmission = prepare_sir2_dataset(
-        RAW_ROOT / "robustsirr_test_dataset" / "SIR2" / "SolidObjectDataset",
-        PROCESSED_ROOT / "solidobject",
+        RAW_ROOT / "robustsirr_test_dataset" / "SIR2" / "objectsDataset",
+        PROCESSED_ROOT / "objects",
     )
     wild_blended, wild_transmission = prepare_sir2_dataset(
-        RAW_ROOT / "robustsirr_test_dataset" / "SIR2" / "WildSceneDataset",
-        PROCESSED_ROOT / "wildscene",
+        RAW_ROOT / "robustsirr_test_dataset" / "SIR2" / "wildDataset",
+        PROCESSED_ROOT / "wild",
     )
     sir2_blended, sir2_transmission = merge_sir2(
         [
             PROCESSED_ROOT / "postcard",
-            PROCESSED_ROOT / "solidobject",
-            PROCESSED_ROOT / "wildscene",
+            PROCESSED_ROOT / "objects",
+            PROCESSED_ROOT / "wild",
         ],
         PROCESSED_ROOT / "sir2_withgt",
     )
@@ -140,10 +140,10 @@ def main() -> None:
     print(f"real20/transmission_layer: {real20_transmission}")
     print(f"postcard/blended: {postcard_blended}")
     print(f"postcard/transmission_layer: {postcard_transmission}")
-    print(f"solidobject/blended: {solid_blended}")
-    print(f"solidobject/transmission_layer: {solid_transmission}")
-    print(f"wildscene/blended: {wild_blended}")
-    print(f"wildscene/transmission_layer: {wild_transmission}")
+    print(f"objects/blended: {solid_blended}")
+    print(f"objects/transmission_layer: {solid_transmission}")
+    print(f"wild/blended: {wild_blended}")
+    print(f"wild/transmission_layer: {wild_transmission}")
     print(f"sir2_withgt/blended: {sir2_blended}")
     print(f"sir2_withgt/transmission_layer: {sir2_transmission}")
 

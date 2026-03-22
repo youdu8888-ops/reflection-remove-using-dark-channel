@@ -13,10 +13,12 @@ git checkout dip26
 ### 1.2 Setup the environment
 
 ```bash
-conda create -n errnet python=3.8 -y
+conda create -n errnet python=3.10 -y
 conda activate errnet
-pip install torch==1.9.0 torchvision==0.10.0
+pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
+pip install -U pip wheel "setuptools<82"
+pip install visdom==0.2.4 --no-build-isolation
 ```
 
 Notes:
@@ -61,8 +63,8 @@ Supported benchmark names:
 - `ceilnet_table2`
 - `real20`
 - `postcard`
-- `solidobject`
-- `wildscene`
+- `objects`
+- `wild`
 - `sir2_withgt`
 
 ```bash
@@ -124,14 +126,13 @@ python train_errnet_unaligned.py --name errnet_unaligned_ft_cpu --hyper -r --gpu
 
 ## 5. Baseline Result
 
-For now, this section provides a table template. If exact numbers from the paper are needed later, they can be filled in afterward.
+> checkpoints/errnet/errnet_060_00463920.pt
 
-| Dataset | PSNR | SSIM | Notes |
-| --- | --- | --- | --- |
-| CEILNet Table 2 |  |  | To be filled |
-| real20 |  |  | To be filled |
-| postcard |  |  | To be filled |
-| solidobject |  |  | To be filled |
-| wildscene |  |  | To be filled |
-| sir2_withgt |  |  | To be filled |
+| Dataset | PSNR | SSIM | NCC | LMSE |
+| --- | --- | --- | --- | --- |
+| CEILNet Table 2 | 27.88 | 0.9407 | 0。9808 | 0。0048 |
+| real20 | 23.55 | 0.8285 | 0.8877 | 0.0201 |
+| objects | 24.85 | 0.8980 | 0.9817 | 0.0029|
+| postcard | 22.07 | 0.8773 | 0。9463 | 0。0044 |
+| wild | 25.18 | 0.886 | 0.9359 | 0.0083|
 

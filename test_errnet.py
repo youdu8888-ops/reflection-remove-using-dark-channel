@@ -26,15 +26,15 @@ EVAL_DATASETS = {
         "path": "postcard",
         "save_subdir": "postcard",
     },
-    "solidobject": {
-        "dataset_name": "testdata_solidobject",
-        "path": "solidobject",
-        "save_subdir": "solidobject",
+    "objects": {
+        "dataset_name": "testdata_objects",
+        "path": "objects",
+        "save_subdir": "objects",
     },
-    "wildscene": {
-        "dataset_name": "testdata_wildscene",
-        "path": "wildscene",
-        "save_subdir": "wildscene",
+    "wild": {
+        "dataset_name": "testdata_wild",
+        "path": "wild",
+        "save_subdir": "wild",
     },
     "sir2_withgt": {
         "dataset_name": "testdata_sir2",
