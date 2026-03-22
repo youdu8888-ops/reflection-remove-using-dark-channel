@@ -19,6 +19,7 @@ EVAL_DATASETS = {
         "dataset_name": "testdata_real",
         "path": "real20",
         "save_subdir": "real20",
+        "max_long_edge": 512,
     },
     "postcard": {
         "dataset_name": "testdata_postcard",
@@ -78,14 +79,23 @@ def parse_test_args():
         default=None,
         help="override output subdirectory name under result_dir",
     )
+    parser.add_argument(
+        "--max_long_edge",
+        type=int,
+        default=None,
+        help="resize test images so the longest edge does not exceed this value",
+    )
     args, remaining = parser.parse_known_args()
     sys.argv = [sys.argv[0]] + remaining
     return args
 
 
-def build_eval_dataloader(opt, data_root, dataset_key):
+def build_eval_dataloader(opt, data_root, dataset_key, max_long_edge=None):
     spec = EVAL_DATASETS[dataset_key]
-    dataset = datasets.CEILTestDataset(join(data_root, spec["path"]))
+    dataset = datasets.CEILTestDataset(
+        join(data_root, spec["path"]),
+        max_long_edge=max_long_edge if max_long_edge is not None else spec.get("max_long_edge"),
+    )
     dataloader = datasets.DataLoader(
         dataset,
         batch_size=1,
@@ -96,13 +106,16 @@ def build_eval_dataloader(opt, data_root, dataset_key):
     return spec, dataloader
 
 
-def build_test_dataloader(opt, dataset_key, input_dir):
+def build_test_dataloader(opt, dataset_key, input_dir, max_long_edge=None):
     if dataset_key == "custom":
-        dataset = datasets.RealDataset(input_dir)
+        dataset = datasets.RealDataset(input_dir, max_long_edge=max_long_edge)
         save_subdir = "custom"
     else:
         spec = TEST_DATASETS[dataset_key]
-        dataset = datasets.RealDataset(input_dir if spec["path"] is None else join(input_dir, spec["path"]))
+        dataset = datasets.RealDataset(
+            input_dir if spec["path"] is None else join(input_dir, spec["path"]),
+            max_long_edge=max_long_edge,
+        )
         save_subdir = spec["save_subdir"]
 
     dataloader = datasets.DataLoader(
@@ -130,7 +143,12 @@ def main():
     engine = Engine(opt)
 
     if cli_args.dataset in EVAL_DATASETS:
-        spec, dataloader = build_eval_dataloader(opt, cli_args.data_root, cli_args.dataset)
+        spec, dataloader = build_eval_dataloader(
+            opt,
+            cli_args.data_root,
+            cli_args.dataset,
+            max_long_edge=cli_args.max_long_edge,
+        )
         save_subdir = cli_args.save_subdir or spec["save_subdir"]
         res = engine.eval(
             dataloader,
@@ -139,7 +157,12 @@ def main():
         )
         print(res)
     else:
-        default_save_subdir, dataloader = build_test_dataloader(opt, cli_args.dataset, cli_args.input_dir)
+        default_save_subdir, dataloader = build_test_dataloader(
+            opt,
+            cli_args.dataset,
+            cli_args.input_dir,
+            max_long_edge=cli_args.max_long_edge,
+        )
         save_subdir = cli_args.save_subdir or default_save_subdir
         engine.test(
             dataloader,

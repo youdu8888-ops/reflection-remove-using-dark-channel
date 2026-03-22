@@ -14,6 +14,26 @@ import util.util as util
 import data.torchdata as torchdata
 
 
+def _resize_long_edge(img, max_long_edge, round_factor=1):
+    if max_long_edge is None:
+        return img
+
+    ow, oh = img.size
+    long_edge = max(ow, oh)
+    if long_edge <= max_long_edge:
+        return img
+
+    scale = max_long_edge / float(long_edge)
+    new_w = max(1, int(round(ow * scale)))
+    new_h = max(1, int(round(oh * scale)))
+
+    if round_factor > 1:
+        new_w = max(round_factor, int(round(new_w / float(round_factor))) * round_factor)
+        new_h = max(round_factor, int(round(new_h / float(round_factor))) * round_factor)
+
+    return img.resize((new_w, new_h), Image.BICUBIC)
+
+
 def __scale_width(img, target_width):
     ow, oh = img.size
     if (ow == target_width):
@@ -146,7 +166,7 @@ class CEILDataset(BaseDataset):
 
 
 class CEILTestDataset(BaseDataset):
-    def __init__(self, datadir, fns=None, size=None, enable_transforms=False, unaligned_transforms=False, round_factor=1, flag=None):
+    def __init__(self, datadir, fns=None, size=None, enable_transforms=False, unaligned_transforms=False, round_factor=1, flag=None, max_long_edge=None):
         super(CEILTestDataset, self).__init__()
         self.size = size
         self.datadir = datadir
@@ -155,6 +175,7 @@ class CEILTestDataset(BaseDataset):
         self.unaligned_transforms = unaligned_transforms
         self.round_factor = round_factor
         self.flag = flag
+        self.max_long_edge = max_long_edge
         
         if size is not None:
             self.fns = self.fns[:size]
@@ -167,6 +188,9 @@ class CEILTestDataset(BaseDataset):
         
         if self.enable_transforms:
             t_img, m_img = paired_data_transforms(t_img, m_img, self.unaligned_transforms)
+        else:
+            t_img = _resize_long_edge(t_img, self.max_long_edge, self.round_factor)
+            m_img = _resize_long_edge(m_img, self.max_long_edge, self.round_factor)
 
         B = to_tensor(t_img)
         M = to_tensor(m_img)
@@ -184,11 +208,13 @@ class CEILTestDataset(BaseDataset):
 
 
 class RealDataset(BaseDataset):
-    def __init__(self, datadir, fns=None, size=None):
+    def __init__(self, datadir, fns=None, size=None, round_factor=1, max_long_edge=None):
         super(RealDataset, self).__init__()
         self.size = size
         self.datadir = datadir
         self.fns = fns or os.listdir(join(datadir))
+        self.round_factor = round_factor
+        self.max_long_edge = max_long_edge
         
         if size is not None:
             self.fns = self.fns[:size]
@@ -198,6 +224,7 @@ class RealDataset(BaseDataset):
         B = -1
         
         m_img = Image.open(join(self.datadir, fn)).convert('RGB')
+        m_img = _resize_long_edge(m_img, self.max_long_edge, self.round_factor)
 
         M = to_tensor(m_img)
         data = {'input': M, 'target_t': B, 'fn': fn}
