@@ -18,6 +18,13 @@ from PIL import Image
 from os.path import join
 
 
+def _torch_load_compat(path, map_location=None):
+    try:
+        return torch.load(path, map_location=map_location, weights_only=False)
+    except TypeError:
+        return torch.load(path, map_location=map_location)
+
+
 def tensor2im(image_tensor, imtype=np.uint8):
     image_tensor = image_tensor.detach()
     image_numpy = image_tensor[0].cpu().float().numpy()
@@ -111,7 +118,9 @@ class ERRNetBase(BaseModel):
             target = tensor2im(self.target_t)
 
             if self.aligned:
-                res = index.quality_assess(output_i, target)
+                h = min(output_i.shape[0], target.shape[0])
+                w = min(output_i.shape[1], target.shape[1])
+                res = index.quality_assess(output_i[:h, :w], target[:h, :w])
             else:
                 res = {}
 
@@ -173,7 +182,7 @@ class ERRNetModel(ERRNetBase):
     def __init__(self):
         self.epoch = 0
         self.iterations = 0
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu")
 
     def print_network(self):
         print('--------------------- Model ---------------------')
@@ -191,6 +200,7 @@ class ERRNetModel(ERRNetBase):
 
     def initialize(self, opt):
         BaseModel.initialize(self, opt)
+        self.device = torch.device("cuda:%d" % self.gpu_ids[0] if len(self.gpu_ids) > 0 else "cpu")
 
         in_channels = 3
         self.vgg = None
@@ -346,14 +356,14 @@ class ERRNetModel(ERRNetBase):
 
         if icnn_path is None:
             model_path = util.get_model_list(model.save_dir, model.name(), epoch=resume_epoch)
-            state_dict = torch.load(model_path)
+            state_dict = _torch_load_compat(model_path)
             model.epoch = state_dict['epoch']
             model.iterations = state_dict['iterations']
             model.net_i.load_state_dict(state_dict['icnn'])
             if model.isTrain:
                 model.optimizer_G.load_state_dict(state_dict['opt_g'])
         else:
-            state_dict = torch.load(icnn_path)
+            state_dict = _torch_load_compat(icnn_path, map_location=torch.device('cpu'))
             model.net_i.load_state_dict(state_dict['icnn'])
             model.epoch = state_dict['epoch']
             model.iterations = state_dict['iterations']
@@ -390,7 +400,7 @@ class NetworkWrapper(ERRNetBase):
     def __init__(self):
         self.epoch = 0
         self.iterations = 0
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu")
 
     def print_network(self):
         print('--------------------- NetworkWrapper ---------------------')
@@ -404,6 +414,7 @@ class NetworkWrapper(ERRNetBase):
 
     def initialize(self, opt, net):
         BaseModel.initialize(self, opt)
+        self.device = torch.device("cuda:%d" % self.gpu_ids[0] if len(self.gpu_ids) > 0 else "cpu")
         self.net = net.to(self.device)
         self.edge_map = EdgeMap(scale=1).to(self.device)
         

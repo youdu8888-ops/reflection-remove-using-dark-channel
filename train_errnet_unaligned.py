@@ -11,12 +11,13 @@ opt = TrainOptions().parse()
 
 cudnn.benchmark = True
 
-# modify the following code to 
-datadir = '/media/kaixuan/DATA/Papers/Code/Data/Reflection/'
+# processed datasets prepared by datasets/prepare_train_data.py and datasets/prepare_test_data.py
+datadir = './datasets/processed_data'
+raw_datadir = './datasets/raw_data'
 
 datadir_syn = join(datadir, 'VOCdevkit/VOC2012/PNGImages')
 datadir_real = join(datadir, 'real_train')
-datadir_unaligned = join(datadir, 'unaligned', 'unaligned_train250')
+datadir_unaligned = join(raw_datadir, 'Dataset/DSLR/unaligned_train250')
 
 train_dataset = datasets.CEILDataset(datadir_syn, read_fns('VOC2012_224_train_png.txt'), size=opt.max_dataset_size)
 train_dataset_real = datasets.CEILTestDataset(datadir_real, enable_transforms=True)

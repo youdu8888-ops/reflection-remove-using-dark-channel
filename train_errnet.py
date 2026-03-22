@@ -25,8 +25,8 @@ if opt.debug:
     opt.serial_batches = True
     opt.no_flip = True
 
-# modify the following code to 
-datadir = '/media/kaixuan/DATA/Papers/Code/Data/Reflection/'
+# processed datasets prepared by datasets/prepare_train_data.py and datasets/prepare_test_data.py
+datadir = './datasets/processed_data'
 
 datadir_syn = join(datadir, 'VOCdevkit/VOC2012/PNGImages')
 datadir_real = join(datadir, 'real_train')
@@ -48,7 +48,7 @@ eval_dataset_ceilnet = datasets.CEILTestDataset(join(datadir, 'testdata_CEILNET_
 
 eval_dataset_real = datasets.CEILTestDataset(
     join(datadir, 'real20'),
-    fns=read_fns('real_test.txt'))
+    size=20)
 
 eval_dataloader_ceilnet = datasets.DataLoader(
     eval_dataset_ceilnet, batch_size=1, shuffle=False,

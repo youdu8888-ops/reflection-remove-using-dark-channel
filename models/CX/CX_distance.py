@@ -235,7 +235,7 @@ def CX_loss(I_features, T_features, deformation=False, dis=False):
         deforma_sigma = 0.001
         sT = T_features_tf.shape[1:2 + 1]
         R = CSFlow.calcR_static(sT, deformation_sigma=deforma_sigma)
-        cs *= torch.Tensor(R).unsqueeze(dim=0).cuda()
+        cs *= torch.as_tensor(R, device=cs.device).unsqueeze(dim=0)
 
     if dis:
         CS = []
