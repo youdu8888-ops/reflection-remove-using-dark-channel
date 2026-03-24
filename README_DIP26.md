@@ -130,9 +130,9 @@ python train_errnet_unaligned.py --name errnet_unaligned_ft_cpu --hyper -r --gpu
 
 | Dataset | PSNR | SSIM | NCC | LMSE |
 | --- | --- | --- | --- | --- |
-| CEILNet Table 2 | 27.88 | 0.9407 | 0。9808 | 0。0048 |
+| CEILNet Table 2 | 27.88 | 0.9407 | 0.9808 | 0.0048 |
 | real20 | 23.55 | 0.8285 | 0.8877 | 0.0201 |
 | objects | 24.85 | 0.8980 | 0.9817 | 0.0029|
-| postcard | 22.07 | 0.8773 | 0。9463 | 0。0044 |
+| postcard | 22.07 | 0.8773 | 0.9463 | 0.0044 |
 | wild | 25.18 | 0.886 | 0.9359 | 0.0083|
 
