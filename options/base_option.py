@@ -1,4 +1,5 @@
 import argparse
+import sys
 import models
 
 model_names = sorted(name for name in models.__dict__
@@ -23,7 +24,9 @@ class BaseOptions():
 
         # for setting input
         self.parser.add_argument('--serial_batches', action='store_true', help='if true, takes images in order to make batches, otherwise takes them randomly')
-        self.parser.add_argument('--nThreads', default=8, type=int, help='# threads for loading data')        
+        # Windows: multiprocess DataLoader often hits shared-memory / error 1455 under many workers
+        _nw = 0 if sys.platform == 'win32' else 8
+        self.parser.add_argument('--nThreads', default=_nw, type=int, help='# dataloader workers (0=main process only; safer on Windows)')        
         self.parser.add_argument('--max_dataset_size', type=int, default=None, help='Maximum number of samples allowed per dataset. If the dataset directory contains more than max_dataset_size, only a subset is loaded.')
 
         # for display

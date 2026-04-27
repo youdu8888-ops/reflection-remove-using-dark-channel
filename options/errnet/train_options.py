@@ -39,5 +39,32 @@ class TrainOptions(BaseOptions):
         
         self.parser.add_argument('--lambda_gan', type=float, default=0.01, help='weight for gan loss')
         self.parser.add_argument('--lambda_vgg', type=float, default=0.1, help='weight for vgg loss')
+
+        # First-conv channel weight ratio regularizer: L_total += lambda * mean_g max(0, w_g/(w_rgb+eps)-alpha)^2
+        # for g in {DCP, hyper} when the corresponding input is used (mean over 1 or 2 terms); 0 if neither.
+        self.parser.add_argument(
+            '--lambda_ch_weight_reg',
+            type=float,
+            default=0.0,
+            help='weight for first-conv group |W| ratio regularizer (0 = off)',
+        )
+        self.parser.add_argument(
+            '--ch_weight_reg_alpha',
+            type=float,
+            default=0.15,
+            help='target ratio w_extra / (w_rgb + eps) for the regularizer',
+        )
+        self.parser.add_argument(
+            '--ch_weight_reg_eps',
+            type=float,
+            default=1e-8,
+            help='epsilon in denominator of channel weight ratio regularizer',
+        )
+
+        self.parser.add_argument(
+            '--real_data_only',
+            action='store_true',
+            help='only train on datasets/processed_data/real_train (no VOC synthetic branch; run prepare_train_data --real-only first)',
+        )
         
         self.isTrain = True

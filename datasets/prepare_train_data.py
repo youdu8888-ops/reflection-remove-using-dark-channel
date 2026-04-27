@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 from pathlib import Path
+import argparse
 import shutil
+from typing import Optional
 
 from PIL import Image
 
@@ -8,6 +12,23 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW_ROOT = ROOT / "datasets" / "raw_data"
 PROCESSED_ROOT = ROOT / "datasets" / "processed_data"
 CROP_SIZE = 224
+
+
+def resolve_real89_src(override: Optional[Path]) -> Path:
+    """Prefer explicit path, then <repo>/real89, then datasets/raw_data/real89."""
+    candidates = []
+    if override is not None:
+        candidates.append(override.resolve())
+    candidates.append(ROOT / "real89")
+    candidates.append(RAW_ROOT / "real89")
+    for p in candidates:
+        if p.is_dir() and (p / "blended").is_dir() and (p / "transmission_layer").is_dir():
+            return p
+    raise FileNotFoundError(
+        "未找到成对 real 数据。请将包含 blended/ 与 transmission_layer/ 的目录放在以下其一：\n"
+        f"  {ROOT / 'real89'}\n  或 {RAW_ROOT / 'real89'}\n"
+        "或使用: python datasets/prepare_train_data.py --real-only --real-src D:\\path\\to\\real89"
+    )
 
 
 def reset_dir(path: Path) -> None:
@@ -51,14 +72,13 @@ def prepare_voc() -> int:
     return len(names)
 
 
-def prepare_real_train() -> tuple[int, int]:
-    src_dir = RAW_ROOT / "real89"
+def prepare_real_train(src_dir: Optional[Path] = None) -> tuple[int, int]:
+    """Copy real89 (blended + transmission_layer) into processed_data/real_train for training."""
+    src_dir = src_dir or resolve_real89_src(None)
     dst_dir = PROCESSED_ROOT / "real_train"
 
-    if not src_dir.exists():
-        raise FileNotFoundError(f"Missing raw Berkeley real dataset: {src_dir}")
     if not (src_dir / "blended").exists() or not (src_dir / "transmission_layer").exists():
-        raise FileNotFoundError("Expected 'blended' and 'transmission_layer' in raw_data/real89")
+        raise FileNotFoundError(f"Expected 'blended' and 'transmission_layer' under {src_dir}")
 
     if dst_dir.exists():
         shutil.rmtree(dst_dir)
@@ -70,10 +90,38 @@ def prepare_real_train() -> tuple[int, int]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="准备 ERRNet 训练数据：VOC 合成用 PNG，或从 real89 复制成对真实数据到 processed_data/real_train。"
+    )
+    parser.add_argument(
+        "--real-only",
+        action="store_true",
+        help="只处理 real89 → processed_data/real_train（不需要 VOC 原文）",
+    )
+    parser.add_argument(
+        "--real-src",
+        type=Path,
+        default=None,
+        help="成对数据根目录（含 blended/ 与 transmission_layer/）；默认用仓库根下 real89 或 datasets/raw_data/real89",
+    )
+    args = parser.parse_args()
+
     PROCESSED_ROOT.mkdir(parents=True, exist_ok=True)
 
+    if args.real_only:
+        src = resolve_real89_src(args.real_src)
+        print(f"[i] 使用源目录: {src}")
+        real_blended, real_transmission = prepare_real_train(src)
+        print("\nDone (real only).")
+        print(f"real_train/blended: {real_blended}")
+        print(f"real_train/transmission_layer: {real_transmission}")
+        print(f"输出目录: {PROCESSED_ROOT / 'real_train'}")
+        return
+
     voc_count = prepare_voc()
-    real_blended, real_transmission = prepare_real_train()
+    real_src = resolve_real89_src(args.real_src)
+    print(f"[i] 使用源目录: {real_src}")
+    real_blended, real_transmission = prepare_real_train(real_src)
 
     print("\nDone.")
     print(f"VOC PNGImages: {voc_count}")

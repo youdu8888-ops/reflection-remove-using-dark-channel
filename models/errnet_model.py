@@ -8,6 +8,7 @@ import itertools
 from collections import OrderedDict
 
 import util.util as util
+from util.input_channel_weights import ch_weight_ratio_reg_loss
 import util.index as index
 import models.networks as networks
 import models.losses as losses
@@ -75,6 +76,13 @@ class EdgeMap(nn.Module):
         return edge
 
 
+def dark_channel_map(x, kernel_size=15):
+    """Dark channel: min over local patch of per-pixel min(R,G,B). x: N,3,H,W."""
+    min_rgb, _ = x.min(dim=1, keepdim=True)
+    pad = kernel_size // 2
+    return -F.max_pool2d(-min_rgb, kernel_size, stride=1, padding=pad)
+
+
 class ERRNetBase(BaseModel):
     def _init_optimizer(self, optimizers):
         self.optimizers = optimizers
@@ -139,11 +147,17 @@ class ERRNetBase(BaseModel):
                     if not os.path.exists(join(savedir, name)):
                         os.makedirs(join(savedir, name))
                     if suffix is not None:
-                        Image.fromarray(output_i.astype(np.uint8)).save(join(savedir, name,'{}_{}.png'.format(self.opt.name, suffix)))
+                        out_name = join(savedir, name, '{}_{}.png'.format(self.opt.name, suffix))
+                        t_name = join(savedir, name, 't_label_{}.png'.format(suffix))
+                        m_name = join(savedir, name, 'm_input_{}.png'.format(suffix))
+                        Image.fromarray(output_i.astype(np.uint8)).save(out_name)
                     else:
-                        Image.fromarray(output_i.astype(np.uint8)).save(join(savedir, name, '{}.png'.format(self.opt.name)))
-                    Image.fromarray(target.astype(np.uint8)).save(join(savedir, name, 't_label.png'))
-                    Image.fromarray(tensor2im(self.input).astype(np.uint8)).save(join(savedir, name, 'm_input.png'))
+                        out_name = join(savedir, name, '{}.png'.format(self.opt.name))
+                        t_name = join(savedir, name, 't_label.png')
+                        m_name = join(savedir, name, 'm_input.png')
+                        Image.fromarray(output_i.astype(np.uint8)).save(out_name)
+                    Image.fromarray(target.astype(np.uint8)).save(t_name)
+                    Image.fromarray(tensor2im(self.input).astype(np.uint8)).save(m_name)
                 else:
                     if not os.path.exists(join(savedir, 'transmission_layer')):
                         os.makedirs(join(savedir, 'transmission_layer'))
@@ -212,6 +226,8 @@ class ERRNetModel(ERRNetBase):
         self.device = torch.device("cuda:%d" % self.gpu_ids[0] if len(self.gpu_ids) > 0 else "cpu")
 
         in_channels = 3
+        if getattr(opt, 'dark_channel', False):
+            in_channels += 1
         self.vgg = None
         
         if opt.hyper:
@@ -223,6 +239,10 @@ class ERRNetModel(ERRNetBase):
         self.edge_map = EdgeMap(scale=1).to(self.device)
 
         if self.isTrain:
+            # Perceptual loss needs Vgg19 on the same device as tensors; without --hyper self.vgg is None
+            # and VGGLoss would otherwise build a CPU Vgg19 + MeanShift (device mismatch on cuda).
+            if self.vgg is None:
+                self.vgg = losses.Vgg19(requires_grad=False).to(self.device)
             # define loss functions
             self.loss_dic = losses.init_loss(opt, self.Tensor)
             vggloss = losses.ContentLoss()
@@ -281,6 +301,7 @@ class ERRNetModel(ERRNetBase):
         self.loss_icnn_pixel = None
         self.loss_icnn_vgg = None
         self.loss_G_GAN = None
+        self.loss_ch_reg = None
 
         if self.opt.lambda_gan > 0:
             self.loss_G_GAN = self.loss_dic['gan'].get_g_loss(
@@ -299,14 +320,35 @@ class ERRNetModel(ERRNetBase):
             self.loss_CX = self.loss_dic['t_cx'].get_loss(self.output_i, self.target_t)
             
             self.loss_G += self.loss_CX
-        
+
+        lam_ch = getattr(self.opt, 'lambda_ch_weight_reg', 0.0) or 0.0
+        if (
+            lam_ch > 0
+            and (
+                getattr(self.opt, 'dark_channel', False)
+                or getattr(self.opt, 'hyper', False)
+            )
+        ):
+            alpha = getattr(self.opt, 'ch_weight_reg_alpha', 0.15)
+            eps = getattr(self.opt, 'ch_weight_reg_eps', 1e-8)
+            self.loss_ch_reg = ch_weight_ratio_reg_loss(
+                self.net_i, self.opt, eps=eps, alpha=alpha
+            )
+            self.loss_G = self.loss_G + lam_ch * self.loss_ch_reg
+
         self.loss_G.backward()
 
     def forward(self):
         # without edge
         input_i = self.input
 
-        if self.vgg is not None:
+        if getattr(self.opt, 'dark_channel', False):
+            k = getattr(self.opt, 'dcp_kernel_size', 15)
+            dcp = dark_channel_map(self.input, kernel_size=k)
+            input_i = torch.cat([input_i, dcp], dim=1)
+
+        # self.vgg may exist for perceptual loss only; hypercolumn input is only when --hyper
+        if getattr(self.opt, 'hyper', False) and self.vgg is not None:
             hypercolumn = self.vgg(self.input)
             _, C, H, W = self.input.shape
             hypercolumn = [F.interpolate(feature.detach(), size=(H, W), mode='bilinear', align_corners=False) for feature in hypercolumn]
@@ -346,6 +388,9 @@ class ERRNetModel(ERRNetBase):
 
         if self.loss_CX is not None:
             ret_errors['CX'] = self.loss_CX.item()
+        ch = getattr(self, 'loss_ch_reg', None)
+        if ch is not None:
+            ret_errors['ChReg'] = ch.item()
 
         return ret_errors
 

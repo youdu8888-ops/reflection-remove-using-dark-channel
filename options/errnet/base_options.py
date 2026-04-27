@@ -14,6 +14,8 @@ class BaseOptions(Base):
         self.parser.add_argument('--init_type', type=str, default='edsr', help='network initialization [normal|xavier|kaiming|orthogonal|uniform]')
         # for network
         self.parser.add_argument('--hyper', action='store_true', help='if true, augment input with vgg hypercolumn feature')
+        self.parser.add_argument('--dark_channel', action='store_true', help='if true, concatenate dark channel prior (1ch) after RGB')
+        self.parser.add_argument('--dcp_kernel_size', type=int, default=15, help='patch size for dark channel min-filter (odd recommended)')
         
         self.initialized = True
 

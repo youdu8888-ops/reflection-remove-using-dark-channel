@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import math
+import shutil
 
 import torch
 import numpy as np
@@ -182,9 +183,8 @@ def write_loss(writer, prefix, avg_meters, iteration):
 import socket
 
 try:
-    _rows, _cols = os.popen('stty size', 'r').read().split()
-    term_width = int(_cols)
-except ValueError:
+    term_width = shutil.get_terminal_size(fallback=(24, 80)).columns
+except (OSError, AttributeError, ValueError):
     term_width = 80
 
 TOTAL_BAR_LENGTH = 65.
@@ -215,11 +215,16 @@ def progress_bar(current, total, msg=None):
     L.append('  Step: %s' % format_time(step_time))
     L.append(' | Tot: %s' % format_time(tot_time))
     if msg:
+        # Keep the whole line within ~terminal width: long str(avg_meters) breaks \b padding.
+        _max = max(8, int(term_width) - int(TOTAL_BAR_LENGTH) - 28)
+        if len(msg) > _max:
+            msg = msg[: _max - 3] + '...'
         L.append(' | ' + msg)
 
     msg = ''.join(L)
     sys.stdout.write(msg)
-    for i in range(term_width-int(TOTAL_BAR_LENGTH)-len(msg)-3):
+    pad = int(term_width) - int(TOTAL_BAR_LENGTH) - len(msg) - 3
+    for i in range(max(0, pad)):
         sys.stdout.write(' ')
 
     # Go back to the center of the bar.

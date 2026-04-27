@@ -88,11 +88,14 @@ class Engine(object):
         model = self.model
         opt = self.opt
         with torch.no_grad():
+            n_val = len(val_loader)
             for i, data in enumerate(val_loader):                
                 index = model.eval(data, savedir=savedir, **kwargs)
                 avg_meters.update(index)
-                
-                util.progress_bar(i, len(val_loader), str(avg_meters))
+                # Do not pass str(avg_meters): progress_bar uses it on one line with \b;
+                # long/medium strings get clipped or garbled in typical terminals/IDEs.
+                util.progress_bar(
+                    i, n_val, 'eval {}/{}'.format(i + 1, n_val))
                 
         if not opt.no_log:
             util.write_loss(self.writer, join('eval', dataset_name), avg_meters, self.epoch)
